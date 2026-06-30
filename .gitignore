@@ -1,0 +1,15 @@
+dist/
+build/
+*.spec
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# Generated data containing real PSKs and configs — never commit these
+data/exports/*
+data/profiles/*
+data/history/*
+!data/exports/.gitkeep
+!data/profiles/.gitkeep
+!data/history/.gitkeep

@@ -1,0 +1,1642 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>pfSense IPsec Bulk Config Generator</title>
+<style>
+:root {
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--surface3:#2a2f45;
+  --border:#2e3350;--border2:#3d4466;
+  --accent:#4f8ef7;--accent2:#3a6fd4;
+  --green:#3ecf8e;--green2:#2ba870;--amber:#f5a623;--red:#e05c5c;
+  --text:#e8eaf0;--text2:#9aa0bc;--text3:#5c6380;
+  --tag-bg:#1e3a5f;--tag-text:#7ab3f5;
+  --radius:8px;--radius-lg:12px;
+}
+[data-theme="light"] {
+  --bg:#f0f2f7;--surface:#ffffff;--surface2:#f4f5f9;--surface3:#e8eaf0;
+  --border:#d0d4e8;--border2:#b0b8d0;
+  --accent:#2563eb;--accent2:#1d4ed8;
+  --green:#059669;--green2:#047857;--amber:#d97706;--red:#dc2626;
+  --text:#111827;--text2:#374151;--text3:#9ca3af;
+  --tag-bg:#dbeafe;--tag-text:#1d4ed8;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;overflow-x:hidden;transition:background 0.2s,color 0.2s;}
+.shell{display:flex;height:100vh;}
+.sidebar{width:224px;min-width:224px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;}
+.main{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+.top-bar{padding:12px 20px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.content-area{flex:1;overflow-y:auto;padding:20px;display:flex;gap:20px;}
+.left-panel{flex:1;min-width:0;}
+.preview-panel{width:400px;min-width:400px;}
+.logo{padding:18px 16px 12px;border-bottom:1px solid var(--border);}
+.logo-title{font-size:13px;font-weight:700;color:var(--accent);letter-spacing:.5px;}
+.logo-sub{font-size:11px;color:var(--text3);margin-top:2px;}
+.nav{flex:1;padding:6px 0;overflow-y:auto;}
+.nav-section{padding:10px 16px 4px;font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;}
+.nav-item{display:flex;align-items:center;gap:8px;padding:8px 16px;cursor:pointer;color:var(--text2);font-size:13px;border-left:3px solid transparent;transition:all .15s;}
+.nav-item:hover{background:var(--surface2);color:var(--text);}
+.nav-item.active{background:var(--surface2);color:var(--accent);border-left-color:var(--accent);}
+.nav-item .badge{margin-left:auto;background:var(--surface3);color:var(--text2);font-size:10px;padding:1px 6px;border-radius:10px;}
+.nav-item.active .badge{background:var(--tag-bg);color:var(--tag-text);}
+.steps-bar{display:flex;align-items:center;gap:0;}
+.step{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text3);}
+.step.active{color:var(--accent);}
+.step.done{color:var(--green);}
+.step-num{width:22px;height:22px;border-radius:50%;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;}
+.step.active .step-num{background:var(--accent);border-color:var(--accent);color:#fff;}
+.step.done .step-num{background:var(--green);border-color:var(--green);color:#fff;}
+.step-arrow{margin:0 6px;color:var(--border2);font-size:16px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;margin-bottom:14px;}
+.card-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;display:flex;align-items:center;gap:8px;}
+.card-sub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+.card-title .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+.card-title .dot.green{background:var(--green);}
+.card-title .dot.amber{background:var(--amber);}
+.card-title .dot.red{background:var(--red);}
+.card-title .dot.blue{background:var(--accent);}
+.history-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;}
+.history-item:hover{border-color:var(--accent);}
+.history-item-name{font-weight:600;font-size:13px;}
+.history-item-meta{font-size:11px;color:var(--text3);margin-top:1px;}
+.field-row{display:grid;gap:10px;margin-bottom:10px;}
+.field-row.cols-2{grid-template-columns:1fr 1fr;}
+.field-row.cols-3{grid-template-columns:1fr 1fr 1fr;}
+.field-row.cols-4{grid-template-columns:1fr 1fr 1fr 1fr;}
+.field{display:flex;flex-direction:column;gap:4px;}
+label{font-size:11px;font-weight:600;color:var(--text2);letter-spacing:.3px;}
+input,select,textarea{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;color:var(--text);font-size:13px;font-family:inherit;outline:none;transition:border .15s;width:100%;}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);}
+input::placeholder{color:var(--text3);}
+select option{background:var(--surface2);}
+textarea{resize:vertical;min-height:60px;font-family:'Consolas',monospace;font-size:12px;}
+.hint{font-size:11px;color:var(--text3);margin-top:2px;}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;white-space:nowrap;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover{background:var(--accent2);}
+.btn-success{background:var(--green);color:#fff;}
+.btn-success:hover{background:var(--green2);}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border2);}
+.btn-ghost:hover{background:var(--surface2);color:var(--text);}
+.btn-danger{background:transparent;color:var(--red);border:1px solid var(--red);}
+.btn-danger:hover{background:rgba(224,92,92,.1);}
+.btn-amber{background:transparent;color:var(--amber);border:1px solid var(--amber);}
+.btn-amber:hover{background:rgba(245,166,35,.1);}
+.btn-sm{padding:5px 10px;font-size:12px;}
+.btn-xs{padding:3px 8px;font-size:11px;}
+.spoke-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:10px;overflow:hidden;}
+.spoke-header{display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--surface2);cursor:pointer;border-bottom:1px solid var(--border);}
+.spoke-header:hover{background:var(--surface3);}
+.spoke-num{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.spoke-name{font-weight:600;font-size:13px;flex:1;}
+.spoke-meta{font-size:11px;color:var(--text3);}
+.spoke-body{padding:14px;}
+.spoke-body.collapsed{display:none;}
+.spoke-toggle{color:var(--text3);font-size:18px;transition:transform .2s;}
+.spoke-toggle.open{transform:rotate(180deg);}
+.p2-entry{display:grid;grid-template-columns:1fr 150px 70px 32px;gap:8px;align-items:center;margin-bottom:7px;}
+.p2-entry input{margin:0;}
+.p2-header{display:grid;grid-template-columns:1fr 150px 70px 32px;gap:8px;margin-bottom:5px;}
+.p2-header span{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;}
+.p2-remove{background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:4px;border-radius:4px;display:flex;align-items:center;justify-content:center;}
+.p2-remove:hover{color:var(--red);background:rgba(224,92,92,.1);}
+.preview-panel .pcard{height:calc(100vh - 108px);display:flex;flex-direction:column;padding:0;overflow:hidden;}
+.preview-header{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.preview-title{font-size:13px;font-weight:700;flex:1;}
+.preview-tabs{display:flex;gap:4px;flex-wrap:wrap;padding:7px 10px;border-bottom:1px solid var(--border);background:var(--surface2);}
+.preview-tab{padding:3px 9px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;color:var(--text3);border:1px solid transparent;}
+.preview-tab:hover{color:var(--text2);background:var(--surface3);}
+.preview-tab.active{color:var(--accent);border-color:var(--accent);background:rgba(79,142,247,.08);}
+.preview-code{flex:1;overflow-y:auto;padding:12px 14px;}
+.preview-code pre{font-family:'Consolas','Courier New',monospace;font-size:11px;color:var(--text2);white-space:pre-wrap;word-break:break-all;line-height:1.7;}
+.xml-tag{color:#7ab3f5;}
+.xml-cdata{color:#e8a87c;}
+.xml-comment{color:var(--text3);font-style:italic;}
+.output-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:10px;}
+.output-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;}
+.output-card-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:3px;}
+.output-card-sub{font-size:11px;color:var(--text3);margin-bottom:8px;}
+.tag{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:600;}
+.tag-blue{background:var(--tag-bg);color:var(--tag-text);}
+.tag-green{background:rgba(62,207,142,.12);color:var(--green);}
+.tag-amber{background:rgba(245,166,35,.12);color:var(--amber);}
+.tag-red{background:rgba(224,92,92,.12);color:var(--red);}
+.divider{border:none;border-top:1px solid var(--border);margin:14px 0;}
+.section-page{display:none;}
+.section-page.active{display:block;}
+.crypto-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.info-box{background:rgba(79,142,247,.07);border:1px solid rgba(79,142,247,.2);border-radius:var(--radius);padding:9px 13px;font-size:12px;color:var(--text2);margin-bottom:12px;}
+.info-box strong{color:var(--accent);}
+.warn-box{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);border-radius:var(--radius);padding:9px 13px;font-size:12px;color:var(--text2);margin-bottom:12px;}
+.err-box{background:rgba(224,92,92,.07);border:1px solid rgba(224,92,92,.2);border-radius:var(--radius);padding:9px 13px;font-size:12px;color:var(--text2);margin-bottom:8px;}
+.err-box strong{color:var(--red);}
+.live-counter{font-size:11px;color:var(--text3);}
+.live-counter span{color:var(--green);font-weight:700;}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.toggle-label{font-size:12px;color:var(--text2);}
+.toggle{position:relative;width:36px;height:20px;}
+.toggle input{opacity:0;width:0;height:0;}
+.toggle-slider{position:absolute;inset:0;background:var(--border2);border-radius:10px;cursor:pointer;transition:.2s;}
+.toggle-slider:before{content:'';position:absolute;width:14px;height:14px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;}
+.toggle input:checked+.toggle-slider{background:var(--accent);}
+.toggle input:checked+.toggle-slider:before{transform:translateX(16px);}
+.actions-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.empty-state{text-align:center;padding:36px 20px;color:var(--text3);}
+.empty-state .icon{font-size:36px;margin-bottom:10px;}
+.empty-state p{font-size:13px;}
+/* Config review table */
+.config-table{width:100%;border-collapse:collapse;font-size:12px;min-width:860px;}
+.config-table th{background:var(--surface2);color:var(--text3);font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;padding:8px 11px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;}
+.config-table td{padding:8px 11px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:middle;}
+.config-table tbody tr:last-child td{border-bottom:none;}
+.config-table tbody tr:hover td{background:var(--surface2);}
+.config-table tbody tr.wan1-row td{border-left:3px solid var(--accent);}
+.config-table tbody tr.wan2-row td{border-left:3px solid var(--green);}
+.tbl-site{font-weight:700;color:var(--text);}
+.tbl-wan1{color:var(--accent);font-weight:700;font-size:11px;}
+.tbl-wan2{color:var(--green);font-weight:700;font-size:11px;}
+.tbl-ip{font-family:'Consolas',monospace;color:var(--text);font-size:11px;}
+.tbl-psk{font-family:'Consolas',monospace;font-size:11px;color:var(--amber);word-break:break-all;max-width:150px;}
+.tbl-lan{font-family:'Consolas',monospace;color:var(--green);font-size:11px;}
+.tbl-num{color:var(--text3);font-size:11px;}
+.tbl-enc{color:var(--text2);font-size:11px;}
+.p2-pill{display:inline-block;background:var(--tag-bg);color:var(--tag-text);font-size:10px;padding:1px 5px;border-radius:3px;margin:1px;white-space:nowrap;}
+/* Profiles panel */
+.profile-list{display:flex;flex-direction:column;gap:6px;margin-top:10px;}
+.profile-item{display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:all .15s;}
+.profile-item:hover{border-color:var(--accent);background:var(--surface3);}
+.profile-item.active-profile{border-color:var(--green);background:rgba(62,207,142,.07);}
+.profile-item-name{font-weight:600;font-size:13px;flex:1;}
+.profile-item-meta{font-size:11px;color:var(--text3);}
+/* Validation */
+.val-error input,.val-error select{border-color:var(--red)!important;}
+.val-msg{font-size:11px;color:var(--red);margin-top:2px;}
+/* Settings */
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);}
+.setting-row:last-child{border-bottom:none;}
+.setting-label{font-size:13px;font-weight:600;color:var(--text);}
+.setting-sub{font-size:11px;color:var(--text3);margin-top:2px;}
+/* Scrollbar */
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+::-webkit-scrollbar-thumb:hover{background:var(--text3);}
+/* Validation badge */
+.vbadge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;}
+.vbadge-ok{background:rgba(62,207,142,.12);color:var(--green);}
+.vbadge-err{background:rgba(224,92,92,.12);color:var(--red);}
+.vbadge-warn{background:rgba(245,166,35,.12);color:var(--amber);}
+</style>
+</head>
+<body>
+<div class="shell">
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="logo">
+    <div class="logo-title">⚡ pfIPsec Builder</div>
+    <div class="logo-sub">Bulk Config Generator</div>
+  </div>
+  <nav class="nav">
+    <div class="nav-section">Setup</div>
+    <div class="nav-item active" onclick="goSection('hub')" id="nav-hub"><span>🖥</span> Hub Firewall</div>
+    <div class="nav-item" onclick="goSection('crypto')" id="nav-crypto"><span>🔐</span> Phase 1 Crypto</div>
+    <div class="nav-item" onclick="goSection('p2profile')" id="nav-p2profile"><span>🗂</span> P2 Profile</div>
+    <div class="nav-section">Spokes</div>
+    <div class="nav-item" onclick="goSection('spokes')" id="nav-spokes"><span>📡</span> Spokes <span class="badge" id="spoke-badge">0</span></div>
+    <div class="nav-section">Output</div>
+    <div class="nav-item" onclick="goSection('generate')" id="nav-generate"><span>📦</span> Generate XML</div>
+    <div class="nav-section">Config</div>
+    <div class="nav-item" onclick="goSection('profiles')" id="nav-profiles"><span>💾</span> Saved Profiles <span class="badge" id="profiles-badge">0</span></div>
+    <div class="nav-item" onclick="goSection('history')" id="nav-history"><span>🕘</span> Export History <span class="badge" id="history-badge">0</span></div>
+    <div class="nav-item" onclick="goSection('settings')" id="nav-settings"><span>⚙</span> Settings</div>
+  </nav>
+  <div style="padding:10px 16px;border-top:1px solid var(--border);">
+    <div class="live-counter">Spokes: <span id="sidebar-spoke-count">0</span> &nbsp;|&nbsp; P2: <span id="sidebar-p2-count">0</span></div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="top-bar">
+    <div class="steps-bar">
+      <div class="step done" id="step-hub"><div class="step-num">1</div><span>Hub</span></div>
+      <div class="step-arrow">›</div>
+      <div class="step" id="step-crypto"><div class="step-num">2</div><span>Crypto</span></div>
+      <div class="step-arrow">›</div>
+      <div class="step" id="step-p2profile"><div class="step-num">3</div><span>P2 Profile</span></div>
+      <div class="step-arrow">›</div>
+      <div class="step" id="step-spokes"><div class="step-num">4</div><span>Spokes</span></div>
+      <div class="step-arrow">›</div>
+      <div class="step" id="step-generate"><div class="step-num">5</div><span>Generate</span></div>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
+      <button class="btn btn-ghost btn-sm" onclick="loadExample()">Load Example</button>
+      <button class="btn btn-ghost btn-sm" onclick="clearAll()">Clear All</button>
+      <button class="btn btn-ghost btn-sm" onclick="toggleTheme()" id="theme-btn">☀ Light</button>
+    </div>
+  </div>
+
+  <div class="content-area">
+    <div class="left-panel">
+
+      <!-- HUB -->
+      <div class="section-page active" id="page-hub">
+        <div class="card">
+          <div class="card-title"><div class="dot"></div> Hub Firewall</div>
+          <div class="card-sub">Central pfSense — single physical WAN, but two IPsec tunnels (WAN1 and WAN2) run over it per spoke.</div>
+          <div class="field-row cols-2">
+            <div class="field"><label>Hub Site Name</label><input type="text" id="hub-name" placeholder="e.g. DChub" oninput="livePreview()"><div class="hint">Used in tunnel description labels</div></div>
+            <div class="field"><label>Hub Interface Name</label><input type="text" id="hub-interface-name" placeholder="e.g. wan" value="wan" oninput="livePreview()"><div class="hint">Exact pfSense interface identifier — used by both WAN1 and WAN2 tunnels</div></div>
+          </div>
+          <hr class="divider">
+          <div class="info-box"><strong>WAN1</strong> — Used as <code>myid_data</code> for WAN1 tunnels. Both WAN1 and WAN2 tunnels share the hub interface above.</div>
+          <div class="field-row cols-2">
+            <div class="field"><label>Hub WAN1 IP / FQDN</label><input type="text" id="hub-wan1-ip" placeholder="e.g. 115.147.169.194 or hub.dyn.io" oninput="livePreview()"></div>
+            <div class="field"><label>Identifier Type</label><select id="hub-wan1-type" onchange="livePreview()"><option value="address">Static IP</option><option value="fqdn">FQDN (Dynamic)</option></select></div>
+          </div>
+          <hr class="divider">
+          <div class="info-box"><strong>WAN2</strong> — Used as <code>myid_data</code> for WAN2 tunnels. Both WAN1 and WAN2 tunnels share the hub interface above.</div>
+          <div class="field-row cols-2">
+            <div class="field"><label>Hub WAN2 IP / FQDN</label><input type="text" id="hub-wan2-ip" placeholder="e.g. 180.232.117.139 or hub2.dyn.io" oninput="livePreview()"></div>
+            <div class="field"><label>Identifier Type</label><select id="hub-wan2-type" onchange="livePreview()"><option value="address">Static IP</option><option value="fqdn">FQDN (Dynamic)</option></select></div>
+          </div>
+          <hr class="divider">
+          <div class="actions-bar"><button class="btn btn-primary" onclick="goSection('crypto')">Next: Phase 1 Crypto →</button></div>
+        </div>
+      </div>
+
+      <!-- CRYPTO -->
+      <div class="section-page" id="page-crypto">
+        <div class="card">
+          <div class="card-title"><div class="dot"></div> Phase 1 Crypto Settings</div>
+          <div class="card-sub">Applied to all tunnels — becomes the <code>&lt;encryption&gt;</code> block in every Phase 1.</div>
+          <div class="crypto-grid">
+            <div class="field"><label>Encryption Algorithm</label><select id="p1-enc" onchange="livePreview()"><option value="aes256gcm">AES-256-GCM (recommended)</option><option value="aes128gcm">AES-128-GCM</option><option value="aes256">AES-256-CBC</option><option value="aes128">AES-128-CBC</option><option value="3des">3DES</option></select></div>
+            <div class="field"><label>Key Length</label><select id="p1-keylen" onchange="livePreview()"><option value="128">128 bits</option><option value="192">192 bits</option><option value="256">256 bits</option><option value="0">Auto</option></select></div>
+            <div class="field"><label>Hash Algorithm</label><select id="p1-hash" onchange="livePreview()"><option value="sha256">SHA-256</option><option value="sha384">SHA-384</option><option value="sha512">SHA-512</option><option value="sha1">SHA-1 (legacy)</option></select></div>
+            <div class="field"><label>PRF Algorithm</label><select id="p1-prf" onchange="livePreview()"><option value="sha256">SHA-256</option><option value="sha384">SHA-384</option><option value="sha512">SHA-512</option></select></div>
+            <div class="field"><label>DH Group</label><select id="p1-dhgroup" onchange="livePreview()"><option value="14">Group 14 — 2048-bit (recommended)</option><option value="15">Group 15 — 3072-bit</option><option value="16">Group 16 — 4096-bit</option><option value="19">Group 19 — ECP 256</option><option value="20">Group 20 — ECP 384</option><option value="21">Group 21 — ECP 521</option><option value="5">Group 5 — 1536-bit</option><option value="2">Group 2 — 1024-bit</option></select></div>
+            <div class="field"><label>IKE Lifetime (s)</label><input type="number" id="p1-lifetime" value="28800" oninput="livePreview()"><div class="hint">28800 = 8 hours</div></div>
+            <div class="field"><label>DPD Delay (s)</label><input type="number" id="p1-dpd-delay" value="10" oninput="livePreview()"></div>
+            <div class="field"><label>DPD Max Failures</label><input type="number" id="p1-dpd-fail" value="5" oninput="livePreview()"></div>
+          </div>
+          <div class="toggle-row" style="margin-top:6px;"><span class="toggle-label">NAT Traversal</span><label class="toggle"><input type="checkbox" id="p1-nat" checked onchange="livePreview()"><span class="toggle-slider"></span></label></div>
+          <div class="toggle-row"><span class="toggle-label">MOBIKE</span><label class="toggle"><input type="checkbox" id="p1-mobike" onchange="livePreview()"><span class="toggle-slider"></span></label></div>
+          <hr class="divider">
+          <div class="actions-bar"><button class="btn btn-ghost" onclick="goSection('hub')">← Back</button><button class="btn btn-primary" onclick="goSection('p2profile')">Next: P2 Profile →</button></div>
+        </div>
+      </div>
+
+      <!-- P2 PROFILE -->
+      <div class="section-page" id="page-p2profile">
+        <div class="card">
+          <div class="card-title"><div class="dot green"></div> Phase 2 Profile</div>
+          <div class="card-sub">Hub forwarding networks — what each spoke needs to reach. Applied to every tunnel automatically.</div>
+          <div class="info-box">On the <strong>hub</strong>: <code>localid</code> = these networks, <code>remoteid</code> = spoke LAN.<br>On the <strong>spoke</strong>: <code>localid</code> = spoke LAN, <code>remoteid</code> = these networks.</div>
+
+          <!-- Quick-load dropdown -->
+          <div class="field-row cols-2" style="margin-bottom:12px;">
+            <div class="field">
+              <label>Quick-Load Saved Profile</label>
+              <select id="profile-quickload" onchange="quickLoadProfile(this.value)">
+                <option value="">— Select a saved profile —</option>
+              </select>
+            </div>
+            <div style="display:flex;align-items:flex-end;gap:6px;">
+              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('p2-file-input').click()">📂 Import .json</button>
+              <input type="file" id="p2-file-input" accept=".json" style="display:none" onchange="importP2Profile(this)">
+              <span id="p2-load-status" style="font-size:11px;color:var(--green);align-self:center;"></span>
+            </div>
+          </div>
+
+          <div class="crypto-grid" style="margin-bottom:14px;">
+            <div class="field"><label>P2 Encryption</label><select id="p2-enc" onchange="livePreview()"><option value="aes256gcm">AES-256-GCM</option><option value="aes128gcm">AES-128-GCM</option><option value="aes256">AES-256-CBC</option><option value="aes128">AES-128-CBC</option></select></div>
+            <div class="field"><label>Key Length</label><select id="p2-keylen" onchange="livePreview()"><option value="128">128 bits</option><option value="256">256 bits</option><option value="0">Auto</option></select></div>
+            <div class="field"><label>Protocol</label><select id="p2-protocol" onchange="livePreview()"><option value="esp">ESP</option><option value="ah">AH</option></select></div>
+            <div class="field"><label>PFS Key Group</label><select id="p2-pfsgroup" onchange="livePreview()"><option value="0">Disabled (0)</option><option value="14">Group 14 — 2048-bit</option><option value="15">Group 15 — 3072-bit</option><option value="16">Group 16 — 4096-bit</option><option value="19">Group 19 — ECP 256</option></select></div>
+            <div class="field"><label>P2 Lifetime (s)</label><input type="number" id="p2-lifetime" value="3600" oninput="livePreview()"><div class="hint">3600 = 1 hour</div></div>
+            <div class="field"><label>Mode</label><select id="p2-mode" onchange="livePreview()"><option value="tunnel">Tunnel</option><option value="transport">Transport</option></select></div>
+          </div>
+          <div class="toggle-row"><span class="toggle-label">Keep Alive</span><label class="toggle"><input type="checkbox" id="p2-keepalive" checked onchange="livePreview()"><span class="toggle-slider"></span></label></div>
+
+          <hr class="divider">
+          <div class="card-title" style="margin-bottom:8px;"><div class="dot green"></div> Forwarding Networks</div>
+          <div class="p2-header"><span>Label / Description</span><span>Network Address / CIDR</span><span>Prefix Bits</span><span></span></div>
+          <div id="p2-entries"></div>
+          <button class="btn btn-ghost btn-sm" onclick="addP2Entry()" style="margin-top:6px;">+ Add Network</button>
+
+          <hr class="divider">
+          <div class="card-title" style="margin-bottom:8px;"><div class="dot amber"></div> Save This Profile</div>
+          <div class="field-row cols-2" style="margin-bottom:10px;">
+            <div class="field"><label>Profile Name</label><input type="text" id="profile-save-name" placeholder="e.g. Standard-HO, Cloud-Profile"></div>
+            <div style="display:flex;align-items:flex-end;gap:6px;">
+              <button class="btn btn-amber btn-sm" onclick="saveProfileToApp()">💾 Save to App</button>
+              <button class="btn btn-ghost btn-sm" onclick="exportP2Profile()">⬇ Export .json</button>
+            </div>
+          </div>
+          <div id="profile-save-status" style="font-size:11px;color:var(--green);min-height:16px;"></div>
+
+          <hr class="divider">
+          <div class="actions-bar"><button class="btn btn-ghost" onclick="goSection('crypto')">← Back</button><button class="btn btn-primary" onclick="goSection('spokes')">Next: Add Spokes →</button></div>
+        </div>
+      </div>
+
+      <!-- SPOKES -->
+      <div class="section-page" id="page-spokes">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <div>
+            <div style="font-size:15px;font-weight:700;">Spoke Firewalls</div>
+            <div style="font-size:12px;color:var(--text3);margin-top:2px;">Each spoke → 2 Phase 1 + <span id="p2-count-label">0</span> Phase 2 entries per WAN</div>
+          </div>
+          <div class="actions-bar">
+            <button class="btn btn-ghost btn-sm" onclick="autoGenAllPSK()">🔑 Auto-Gen All PSKs</button>
+            <button class="btn btn-primary" onclick="addSpoke()">+ Add Spoke</button>
+          </div>
+        </div>
+        <div id="spokes-container"><div class="empty-state"><div class="icon">📡</div><p>No spokes yet. Click "Add Spoke" to get started.</p></div></div>
+        <div style="margin-top:14px;">
+          <button class="btn btn-ghost" onclick="goSection('p2profile')">← Back</button>
+          <button class="btn btn-success" onclick="goSection('generate')" style="margin-left:8px;">Generate XML →</button>
+        </div>
+      </div>
+
+      <!-- GENERATE -->
+      <div class="section-page" id="page-generate">
+        <div id="generate-summary" style="margin-bottom:12px;"></div>
+        <!-- Validation panel -->
+        <div id="validation-panel" style="margin-bottom:14px;"></div>
+        <!-- Tunnel review table -->
+        <div class="card" style="padding:0;overflow:hidden;margin-bottom:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);">
+            <div><div class="card-title" style="margin-bottom:0;"><div class="dot green"></div> Tunnel Configuration Review</div><div class="card-sub" style="margin:2px 0 0;">One row per WAN per spoke — verify before downloading.</div></div>
+            <button class="btn btn-ghost btn-sm" onclick="exportTableCsv()">⬇ Export CSV</button>
+          </div>
+          <div style="overflow-x:auto;"><table class="config-table"><thead><tr><th>#</th><th>Site</th><th>WAN</th><th>Hub IP</th><th>Spoke IP / FQDN</th><th>Peer ID Type</th><th>Pre-Shared Key</th><th>Spoke LAN</th><th>P2 Networks</th><th>Encryption</th><th>DH</th><th>Lifetime</th></tr></thead><tbody id="config-table-body"><tr><td colspan="12" style="text-align:center;padding:24px;color:var(--text3);">No spokes configured.</td></tr></tbody></table></div>
+        </div>
+        <!-- P2 review table -->
+        <div class="card" style="padding:0;overflow:hidden;margin-bottom:14px;">
+          <div style="padding:12px 16px;border-bottom:1px solid var(--border);"><div class="card-title" style="margin-bottom:0;"><div class="dot amber"></div> Phase 2 Profile — Forwarding Networks</div></div>
+          <div style="overflow-x:auto;"><table class="config-table"><thead><tr><th>#</th><th>Label</th><th>Network</th><th>Bits</th><th>Protocol</th><th>Encryption</th><th>PFS</th><th>Lifetime</th><th>Mode</th></tr></thead><tbody id="p2-table-body"><tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text3);">No P2 networks configured.</td></tr></tbody></table></div>
+        </div>
+        <!-- Download -->
+        <div class="card">
+          <div class="card-title"><div class="dot green"></div> Download XML Files</div>
+          <div class="card-sub">Export all XMLs into a hub-named folder, or download individually.</div>
+          <div class="actions-bar" style="margin-bottom:8px;">
+            <button class="btn btn-success" id="export-folder-btn" onclick="exportToFolder()">📁 Export to Folder</button>
+            <button class="btn btn-ghost" onclick="downloadAll()">⬇ Download All (individual)</button>
+            <button class="btn btn-ghost" onclick="goSection('spokes')">← Back</button>
+          </div>
+          <div id="export-status" style="font-size:12px;min-height:18px;margin-bottom:10px;"></div>
+          <div class="output-grid" id="output-cards"></div>
+        </div>
+      </div>
+
+      <!-- PROFILES -->
+      <div class="section-page" id="page-profiles">
+        <div class="card">
+          <div class="card-title"><div class="dot amber"></div> Saved P2 Profiles</div>
+          <div class="card-sub">Click a profile to load it into the P2 Profile step. Profiles store forwarding networks + P2 crypto settings.</div>
+          <div class="actions-bar" style="margin-bottom:12px;">
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('profiles-import-input').click()">📂 Import .json</button>
+            <input type="file" id="profiles-import-input" accept=".json" style="display:none" onchange="importP2Profile(this,true)">
+          </div>
+          <div id="profiles-list"><div class="empty-state"><div class="icon">💾</div><p>No saved profiles yet. Go to P2 Profile and click "Save to App".</p></div></div>
+        </div>
+      </div>
+
+      <!-- HISTORY -->
+      <div class="section-page" id="page-history">
+        <div class="card">
+          <div class="card-title"><div class="dot blue"></div> Export History</div>
+          <div class="card-sub">Every export is automatically saved here. Click "Load &amp; Edit" to restore the full config (hub, spokes, P2 profile, crypto) back into the form for editing and re-export. To clear all history, go to Settings.</div>
+          <div id="history-list"><div class="empty-state"><div class="icon">🕘</div><p>No exports yet.<br>Every time you export XMLs, a snapshot is saved here automatically.</p></div></div>
+        </div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div class="section-page" id="page-settings">
+        <div class="card">
+          <div class="card-title"><div class="dot"></div> Settings</div>
+          <div class="card-sub">App preferences and QoL options.</div>
+
+          <div class="setting-row">
+            <div><div class="setting-label">Theme</div><div class="setting-sub">Switch between dark and light mode.</div></div>
+            <button class="btn btn-ghost btn-sm" onclick="toggleTheme()" id="settings-theme-btn">☀ Switch to Light</button>
+          </div>
+
+          <div class="setting-row">
+            <div><div class="setting-label">Export Method</div><div class="setting-sub" id="export-mode-sub">Detecting browser engine…</div></div>
+            <span class="tag tag-blue" id="export-mode-tag">—</span>
+          </div>
+
+          <div class="setting-row" id="pin-folder-row">
+            <div><div class="setting-label">Default Export Folder</div><div class="setting-sub" id="default-folder-sub">No default set — you'll be prompted each export.</div></div>
+            <div class="actions-bar">
+              <button class="btn btn-ghost btn-sm" onclick="pinExportFolder()" id="pin-folder-btn">📌 Pin Folder</button>
+              <button class="btn btn-danger btn-sm" onclick="clearPinnedFolder()" id="clear-folder-btn" style="display:none">✕ Clear</button>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div><div class="setting-label">Description / Filename Pattern</div><div class="setting-sub">Variables: <code>{wan}</code> <code>{site}</code> <code>{hub}</code> — used in Phase 1 description and filenames.</div></div>
+            <div style="width:260px;">
+              <input type="text" id="descr-pattern" value="{wan}-{site}-{hub}" oninput="saveSettings()">
+              <div class="hint" id="descr-preview-hint">Preview: WAN1-SL-CANARY-DChub</div>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div><div class="setting-label">Auto-Generate PSKs</div><div class="setting-sub">Automatically generate a secure random PSK when adding a new spoke.</div></div>
+            <label class="toggle"><input type="checkbox" id="setting-autoPSK" onchange="saveSettings()"><span class="toggle-slider"></span></label>
+          </div>
+
+          <div class="setting-row">
+            <div><div class="setting-label">PSK Length</div><div class="setting-sub">Length of auto-generated pre-shared keys.</div></div>
+            <div style="width:100px;"><select id="setting-psk-len" onchange="saveSettings()"><option value="24">24 chars</option><option value="32" selected>32 chars</option><option value="48">48 chars</option><option value="64">64 chars</option></select></div>
+          </div>
+
+          <div class="setting-row">
+            <div><div class="setting-label">XML Validation</div><div class="setting-sub">Warn about missing fields before generating XML.</div></div>
+            <label class="toggle"><input type="checkbox" id="setting-validation" checked onchange="saveSettings()"><span class="toggle-slider"></span></label>
+          </div>
+
+          <div class="setting-row">
+            <div><div class="setting-label">Open Data Folder</div><div class="setting-sub">Open the data/ folder (exports, profiles, history) in your file manager.</div></div>
+            <button class="btn btn-ghost btn-sm" onclick="openDataFolder()">📂 Open</button>
+          </div>
+
+          <div class="setting-row" style="border-top:2px solid var(--red);margin-top:8px;padding-top:18px;">
+            <div><div class="setting-label" style="color:var(--red);">Clear All Saved Profiles</div><div class="setting-sub">Permanently deletes every saved P2 profile from data/profiles/.</div></div>
+            <button class="btn btn-danger btn-sm" onclick="clearAllProfiles()">🗑 Clear Profiles</button>
+          </div>
+
+          <div class="setting-row">
+            <div><div class="setting-label" style="color:var(--red);">Clear Export History</div><div class="setting-sub">Permanently deletes every saved snapshot from data/history/, including the generated XML files.</div></div>
+            <button class="btn btn-danger btn-sm" onclick="clearAllHistory()">🗑 Clear History</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /left-panel -->
+
+    <!-- PREVIEW -->
+    <div class="preview-panel">
+      <div class="card pcard">
+        <div class="preview-header">
+          <div class="preview-title">📄 Live XML Preview</div>
+          <span class="tag tag-blue" id="preview-tag">Hub</span>
+        </div>
+        <div class="preview-tabs" id="preview-tabs"></div>
+        <div class="preview-code" id="preview-code"><div class="empty-state"><p>Fill in the form to see live XML here.</p></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script src="vendor/jszip.min.js"></script>
+<script>
+// ── Environment / Browser Detection ────────────────────────
+function detectEnvironment() {
+  const ua = navigator.userAgent;
+  const hasDirectoryPicker = typeof window.showDirectoryPicker === 'function';
+  let engine = 'unknown', isChromiumBased = false;
+
+  if (/Edg\//.test(ua)) { engine = 'Edge'; isChromiumBased = true; }
+  else if (/Chrome\//.test(ua) && !/Chromium/.test(ua)) { engine = 'Chrome'; isChromiumBased = true; }
+  else if (/Chromium/.test(ua)) { engine = 'Chromium'; isChromiumBased = true; }
+  else if (/Firefox\//.test(ua)) { engine = 'Firefox'; isChromiumBased = false; }
+  else if (/AppleWebKit/.test(ua) && /Safari/.test(ua) && !/Chrome/.test(ua)) { engine = 'WebKit/Safari'; isChromiumBased = false; }
+  else if (/AppleWebKit/.test(ua)) { engine = 'WebKit'; isChromiumBased = false; }
+
+  // pywebview on Linux uses WebKitGTK (reports as plain WebKit/Safari-like UA, no Chrome/Edg)
+  const isPywebviewLinux = /Linux/.test(ua) && !isChromiumBased && /AppleWebKit/.test(ua);
+
+  return {
+    engine,
+    isChromiumBased,
+    hasDirectoryPicker: hasDirectoryPicker && isChromiumBased, // only trust it on Chromium
+    isPywebviewLinux,
+    exportMode: (hasDirectoryPicker && isChromiumBased) ? 'folder' : 'zip'
+  };
+}
+
+const ENV = detectEnvironment();
+
+// ── Python (PyWebView) Bridge ───────────────────────────────
+function hasPyBridge() {
+  return typeof window.pywebview !== 'undefined' && window.pywebview.api;
+}
+
+async function pyCall(method, ...args) {
+  if (!hasPyBridge()) return null;
+  try { return await window.pywebview.api[method](...args); }
+  catch (e) { console.error('pyCall error', method, e); return { ok:false, error:String(e) }; }
+}
+
+
+// ── State ─────────────────────────────────────────────────
+let spokes = [], spokeCounter = 0, activePreviewTab = 'hub', p2Entries = [];
+let savedProfiles = [];
+let exportHistory = [];
+let pinnedDirHandle = null;
+let settings = { autoPSK: false, pskLen: 32, validation: true, descrPattern: '{wan}-{site}-{hub}', theme: 'dark' };
+
+// ── Nav ───────────────────────────────────────────────────
+function goSection(name) {
+  document.querySelectorAll('.section-page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  updateSteps(name);
+  livePreview();
+  if (name === 'generate') buildGeneratePage();
+  if (name === 'profiles') renderProfilesPanel();
+  if (name === 'history') renderHistoryPanel();
+  if (name === 'settings') refreshSettingsUI();
+}
+
+function updateSteps(active) {
+  const order = ['hub','crypto','p2profile','spokes','generate'];
+  const idx = order.indexOf(active);
+  order.forEach((s, i) => {
+    const el = document.getElementById('step-' + s);
+    if (el) el.className = 'step ' + (i < idx ? 'done' : i === idx ? 'active' : '');
+  });
+}
+
+// ── Theme ─────────────────────────────────────────────────
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  settings.theme = isDark ? 'light' : 'dark';
+  document.getElementById('theme-btn').textContent = isDark ? '🌙 Dark' : '☀ Light';
+  const sb = document.getElementById('settings-theme-btn');
+  if (sb) sb.textContent = isDark ? '🌙 Switch to Dark' : '☀ Switch to Light';
+  saveSettings();
+}
+
+// ── Settings ──────────────────────────────────────────────
+function saveSettings() {
+  settings.autoPSK = document.getElementById('setting-autoPSK')?.checked || false;
+  settings.pskLen = parseInt(document.getElementById('setting-psk-len')?.value || '32');
+  settings.validation = document.getElementById('setting-validation')?.checked !== false;
+  settings.descrPattern = document.getElementById('descr-pattern')?.value || '{wan}-{site}-{hub}';
+  updateDescrPreview();
+}
+
+function loadSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem('pf_settings') || '{}');
+    settings = { ...settings, ...s };
+  } catch(e) {}
+  applySettings();
+}
+
+function applySettings() {
+  const f = (id, val) => { const el = document.getElementById(id); if (el) el[typeof val === 'boolean' ? 'checked' : 'value'] = val; };
+  f('setting-autoPSK', settings.autoPSK);
+  f('setting-psk-len', String(settings.pskLen));
+  f('setting-validation', settings.validation);
+  f('descr-pattern', settings.descrPattern);
+  document.documentElement.setAttribute('data-theme', settings.theme || 'dark');
+  const tb = document.getElementById('theme-btn');
+  if (tb) tb.textContent = settings.theme === 'light' ? '🌙 Dark' : '☀ Light';
+  updateDescrPreview();
+}
+
+function refreshSettingsUI() {
+  applySettings();
+  const sub = document.getElementById('default-folder-sub');
+  const clearBtn = document.getElementById('clear-folder-btn');
+  if (pinnedDirHandle) {
+    sub.textContent = `Pinned: …/${pinnedDirHandle.name}/`;
+    clearBtn.style.display = '';
+  } else {
+    sub.textContent = 'No default set — you\'ll be prompted each export.';
+    clearBtn.style.display = 'none';
+  }
+  updateExportModeUI();
+}
+
+function updateExportModeUI() {
+  const modeSub = document.getElementById('export-mode-sub');
+  const modeTag = document.getElementById('export-mode-tag');
+  const pinRow = document.getElementById('pin-folder-row');
+  const pinBtn = document.getElementById('pin-folder-btn');
+  const exportBtn = document.getElementById('export-folder-btn');
+  if (!modeSub) return;
+
+  if (hasPyBridge()) {
+    modeSub.textContent = `Running as a desktop app — files are written directly to data/exports/ in the app folder. No file picker needed.`;
+    modeTag.textContent = '💾 Direct Disk Write';
+    modeTag.className = 'tag tag-green';
+    if (pinRow) pinRow.style.opacity = '0.45';
+    if (pinBtn) { pinBtn.disabled = true; pinBtn.title = 'Not needed — exports always go to data/exports/ automatically'; }
+    if (exportBtn) exportBtn.textContent = '💾 Export to data/exports/';
+  } else if (ENV.exportMode === 'folder') {
+    modeSub.textContent = `Detected ${ENV.engine} — native folder picker available.`;
+    modeTag.textContent = '📁 Folder Picker';
+    modeTag.className = 'tag tag-green';
+    if (pinRow) pinRow.style.opacity = '1';
+    if (pinBtn) pinBtn.disabled = false;
+    if (exportBtn) exportBtn.textContent = '📁 Export to Folder';
+  } else {
+    modeSub.textContent = `Detected ${ENV.engine} — folder picker unsupported, ZIP export will be used instead.`;
+    modeTag.textContent = '🗜 ZIP Download';
+    modeTag.className = 'tag tag-amber';
+    if (pinRow) pinRow.style.opacity = '0.45';
+    if (pinBtn) { pinBtn.disabled = true; pinBtn.title = 'Not available — ' + ENV.engine + ' does not support folder picking'; }
+    if (exportBtn) exportBtn.textContent = '🗜 Export as ZIP';
+  }
+}
+
+function updateDescrPreview() {
+  const pat = document.getElementById('descr-pattern')?.value || '{wan}-{site}-{hub}';
+  const preview = applyPattern(pat, 'WAN1', 'SL-CANARY', 'DChub');
+  const hint = document.getElementById('descr-preview-hint');
+  if (hint) hint.textContent = `Preview: ${preview}`;
+}
+
+function applyPattern(pat, wan, site, hub) {
+  return pat.replace(/{wan}/gi, wan).replace(/{site}/gi, site).replace(/{hub}/gi, hub);
+}
+
+// ── Folder pin ────────────────────────────────────────────
+async function openDataFolder() {
+  if (hasPyBridge()) {
+    const paths = await pyCall('get_data_paths');
+    if (paths && paths.data) await pyCall('open_path', paths.data);
+  } else {
+    alert('Opening folders requires the desktop app (PyWebView). This feature is unavailable in a plain browser tab.');
+  }
+}
+
+async function pinExportFolder() {
+  if (ENV.exportMode !== 'folder') { alert(`Folder picking isn't supported in ${ENV.engine}. This app will use ZIP export instead — no folder pinning needed.`); return; }
+  try {
+    pinnedDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    refreshSettingsUI();
+  } catch(e) {}
+}
+
+function clearPinnedFolder() {
+  pinnedDirHandle = null;
+  refreshSettingsUI();
+}
+
+// ── PSK Generator ─────────────────────────────────────────
+function genPSK(len) {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%^&*-_+=';
+  const arr = new Uint8Array(len);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map(b => chars[b % chars.length]).join('');
+}
+
+function autoGenAllPSK() {
+  const len = settings.pskLen || 32;
+  spokes.forEach(s => { s.psk1 = genPSK(len); s.psk2 = genPSK(len); });
+  renderSpokes();
+  livePreview();
+}
+
+// ── P2 Entries ────────────────────────────────────────────
+function addP2Entry(label='', addr='', prefix='') {
+  p2Entries.push({ id: Date.now() + Math.random(), label, addr, prefix });
+  renderP2Entries();
+  livePreview();
+}
+
+function removeP2Entry(id) {
+  p2Entries = p2Entries.filter(e => e.id !== id);
+  renderP2Entries(); livePreview();
+}
+
+function renderP2Entries() {
+  const c = document.getElementById('p2-entries');
+  c.innerHTML = '';
+  p2Entries.forEach(e => {
+    const div = document.createElement('div');
+    div.className = 'p2-entry';
+    div.innerHTML = `
+      <input type="text" placeholder="e.g. AWS" value="${esc(e.label)}" oninput="p2Field(${e.id},'label',this.value)">
+      <input type="text" placeholder="e.g. 10.224.0.0 or 10.224.0.0/16" value="${esc(e.addr)}" oninput="p2Field(${e.id},'addr',this.value)">
+      <input type="number" placeholder="16" value="${esc(e.prefix)}" oninput="p2Field(${e.id},'prefix',this.value)" style="text-align:center;">
+      <button class="p2-remove" onclick="removeP2Entry(${e.id})">✕</button>`;
+    c.appendChild(div);
+  });
+  document.getElementById('sidebar-p2-count').textContent = p2Entries.length;
+  document.getElementById('p2-count-label').textContent = p2Entries.length;
+  refreshProfileQuickload();
+}
+
+function p2Field(id, field, val) {
+  const e = p2Entries.find(x => x.id === id);
+  if (e) { e[field] = val; livePreview(); }
+}
+
+// ── Spokes ────────────────────────────────────────────────
+function addSpoke() {
+  spokeCounter++;
+  const psk1 = settings.autoPSK ? genPSK(settings.pskLen || 32) : '';
+  const psk2 = settings.autoPSK ? genPSK(settings.pskLen || 32) : '';
+  spokes.push({ id: 'spoke_'+Date.now(), num: spokeCounter, name:'', wan1:'', wan1type:'address', wan1iface:'wan', wan2:'', wan2type:'address', wan2iface:'wan2', psk1, psk2, lan:'', lanBits:'24', collapsed:false });
+  renderSpokes(); livePreview();
+}
+
+function removeSpoke(id) { spokes = spokes.filter(s => s.id !== id); renderSpokes(); livePreview(); }
+function toggleSpoke(id) { const s = spokes.find(x => x.id === id); if (s) { s.collapsed = !s.collapsed; renderSpokes(); } }
+function spokeField(id, field, val) { const s = spokes.find(x => x.id === id); if (s) { s[field] = val; renderSpokes(false); livePreview(); } }
+
+function renderSpokes(full = true) {
+  const c = document.getElementById('spokes-container');
+  document.getElementById('spoke-badge').textContent = spokes.length;
+  document.getElementById('sidebar-spoke-count').textContent = spokes.length;
+  if (spokes.length === 0) { c.innerHTML = '<div class="empty-state"><div class="icon">📡</div><p>No spokes yet. Click "Add Spoke" to get started.</p></div>'; return; }
+  if (!full) return;
+  c.innerHTML = '';
+  spokes.forEach((s, i) => {
+    const div = document.createElement('div');
+    div.className = 'spoke-card';
+    const pt1 = ['address','fqdn'].map(v => `<option value="${v}" ${s.wan1type===v?'selected':''}>${v==='address'?'Static IP':'FQDN'}</option>`).join('');
+    const pt2 = ['address','fqdn'].map(v => `<option value="${v}" ${s.wan2type===v?'selected':''}>${v==='address'?'Static IP':'FQDN'}</option>`).join('');
+    div.innerHTML = `
+      <div class="spoke-header" onclick="toggleSpoke('${s.id}')">
+        <div class="spoke-num">${i+1}</div>
+        <div class="spoke-name">${s.name||'Spoke '+(i+1)}</div>
+        <div class="spoke-meta">${s.wan1||'—'} · ${s.lan||'—'}/${s.lanBits||24}</div>
+        <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();genSpokePSK('${s.id}')">🔑 PSK</button>
+        <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();removeSpoke('${s.id}')">Remove</button>
+        <div class="spoke-toggle ${s.collapsed?'':'open'}">⌄</div>
+      </div>
+      <div class="spoke-body ${s.collapsed?'collapsed':''}">
+        <div class="field-row cols-2">
+          <div class="field"><label>Site Name</label><input type="text" value="${esc(s.name)}" placeholder="e.g. SL-CANARY-2702" oninput="spokeField('${s.id}','name',this.value)"><div class="hint">Used in description pattern</div></div>
+          <div class="field"><label>Spoke LAN Subnet</label><div style="display:flex;gap:6px;"><input type="text" value="${esc(s.lan)}" placeholder="e.g. 172.20.168.0" oninput="spokeField('${s.id}','lan',this.value)" style="flex:1;"><input type="number" value="${esc(s.lanBits)}" placeholder="24" oninput="spokeField('${s.id}','lanBits',this.value)" style="width:60px;" title="Prefix bits"></div><div class="hint">remoteid on hub / localid on spoke</div></div>
+        </div>
+        <hr class="divider">
+        <div style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">WAN1 — Hub WAN1 ↔ Spoke WAN1</div>
+        <div class="field-row cols-4">
+          <div class="field"><label>Spoke WAN1 IP / FQDN</label><input type="text" value="${esc(s.wan1)}" placeholder="203.177.16.209 or site.dyn.io" oninput="spokeField('${s.id}','wan1',this.value)"></div>
+          <div class="field"><label>Peer ID Type</label><select onchange="spokeField('${s.id}','wan1type',this.value)">${pt1}</select></div>
+          <div class="field"><label>Spoke Interface Name</label><input type="text" value="${esc(s.wan1iface)}" placeholder="e.g. wan" oninput="spokeField('${s.id}','wan1iface',this.value)" title="Exact interface name on the SPOKE firewall"></div>
+          <div class="field"><label>Pre-Shared Key (WAN1)</label><div style="display:flex;gap:4px;"><input type="text" value="${esc(s.psk1)}" placeholder="Enter PSK" oninput="spokeField('${s.id}','psk1',this.value)" style="font-family:monospace;flex:1;"><button class="btn btn-ghost btn-xs" onclick="genOnePSK('${s.id}','psk1')" title="Generate PSK">🔑</button></div></div>
+        </div>
+        <hr class="divider">
+        <div style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">WAN2 — Hub WAN2 ↔ Spoke WAN2</div>
+        <div class="field-row cols-4">
+          <div class="field"><label>Spoke WAN2 IP / FQDN</label><input type="text" value="${esc(s.wan2)}" placeholder="103.120.4.169 or site2.dyn.io" oninput="spokeField('${s.id}','wan2',this.value)"></div>
+          <div class="field"><label>Peer ID Type</label><select onchange="spokeField('${s.id}','wan2type',this.value)">${pt2}</select></div>
+          <div class="field"><label>Spoke Interface Name</label><input type="text" value="${esc(s.wan2iface)}" placeholder="e.g. wan2" oninput="spokeField('${s.id}','wan2iface',this.value)" title="Exact interface name on the SPOKE firewall"></div>
+          <div class="field"><label>Pre-Shared Key (WAN2)</label><div style="display:flex;gap:4px;"><input type="text" value="${esc(s.psk2)}" placeholder="Enter PSK" oninput="spokeField('${s.id}','psk2',this.value)" style="font-family:monospace;flex:1;"><button class="btn btn-ghost btn-xs" onclick="genOnePSK('${s.id}','psk2')" title="Generate PSK">🔑</button></div></div>
+        </div>
+        <div style="margin-top:8px;"><span class="tag tag-blue">${p2Entries.length} P2 nets × 2 WANs = ${p2Entries.length*2} Phase 2 entries</span></div>
+      </div>`;
+    c.appendChild(div);
+  });
+}
+
+function genOnePSK(id, field) {
+  const s = spokes.find(x => x.id === id);
+  if (s) { s[field] = genPSK(settings.pskLen || 32); renderSpokes(); livePreview(); }
+}
+
+function genSpokePSK(id) {
+  const s = spokes.find(x => x.id === id);
+  if (s) { s.psk1 = genPSK(settings.pskLen||32); s.psk2 = genPSK(settings.pskLen||32); renderSpokes(); livePreview(); }
+}
+
+// ── Form Data ─────────────────────────────────────────────
+function getFormData() {
+  return {
+    hub: { name: v('hub-name')||'DChub', interfaceName: v('hub-interface-name')||'wan', wan1ip: v('hub-wan1-ip')||'', wan2ip: v('hub-wan2-ip')||'', wan1type: v('hub-wan1-type')||'address', wan2type: v('hub-wan2-type')||'address' },
+    p1: { enc: v('p1-enc')||'aes256gcm', keylen: v('p1-keylen')||'128', hash: v('p1-hash')||'sha256', prf: v('p1-prf')||'sha256', dhgroup: v('p1-dhgroup')||'14', lifetime: v('p1-lifetime')||'28800', dpdDelay: v('p1-dpd-delay')||'10', dpdFail: v('p1-dpd-fail')||'5', nat: document.getElementById('p1-nat')?.checked?'on':'off', mobike: document.getElementById('p1-mobike')?.checked?'on':'off' },
+    p2: { enc: v('p2-enc')||'aes256gcm', keylen: v('p2-keylen')||'128', protocol: v('p2-protocol')||'esp', pfsgroup: v('p2-pfsgroup')||'0', lifetime: v('p2-lifetime')||'3600', mode: v('p2-mode')||'tunnel', keepalive: document.getElementById('p2-keepalive')?.checked!==false },
+    p2entries: p2Entries, spokes
+  };
+}
+
+function v(id) { const el = document.getElementById(id); return el ? el.value : ''; }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escXml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── XML Generation ────────────────────────────────────────
+function parseCidr(addrOrCidr, bitsField) {
+  if (addrOrCidr && addrOrCidr.includes('/')) { const [a,b] = addrOrCidr.split('/'); return { addr: a.trim(), bits: b.trim() }; }
+  return { addr: (addrOrCidr||'').trim(), bits: (bitsField||'24').trim() };
+}
+
+function getDescr(wan, site, hub) {
+  const pat = settings.descrPattern || '{wan}-{site}-{hub}';
+  return applyPattern(pat, wan, site, hub);
+}
+
+function genP1(ikeid, data, myIp, peerGw, peerType, psk, wan, site, iface, myIdType) {
+  const p1 = data.p1;
+  const hub = data.hub.name || 'DChub';
+  const descr = getDescr(wan, site, hub);
+  return `\t<phase1>
+\t\t<ikeid>${ikeid}</ikeid>
+\t\t<iketype>ikev2</iketype>
+\t\t<disabled></disabled>
+\t\t<interface>${escXml(iface||'wan')}</interface>
+\t\t<remote-gateway>${escXml(peerGw)}</remote-gateway>
+\t\t<protocol>inet</protocol>
+\t\t<myid_type>${myIdType||'address'}</myid_type>
+\t\t<myid_data>${escXml(myIp)}</myid_data>
+\t\t<peerid_type>${peerType||'address'}</peerid_type>
+\t\t<peerid_data>${escXml(peerGw)}</peerid_data>
+\t\t<encryption>
+\t\t\t<item>
+\t\t\t\t<encryption-algorithm>
+\t\t\t\t\t<name>${p1.enc}</name>
+\t\t\t\t\t<keylen>${p1.keylen}</keylen>
+\t\t\t\t</encryption-algorithm>
+\t\t\t\t<hash-algorithm>${p1.hash}</hash-algorithm>
+\t\t\t\t<prf-algorithm>${p1.prf}</prf-algorithm>
+\t\t\t\t<dhgroup>${p1.dhgroup}</dhgroup>
+\t\t\t</item>
+\t\t</encryption>
+\t\t<lifetime>${p1.lifetime}</lifetime>
+\t\t<rekey_time></rekey_time>
+\t\t<reauth_time></reauth_time>
+\t\t<rand_time></rand_time>
+\t\t<pre-shared-key>${escXml(psk)}</pre-shared-key>
+\t\t<private-key></private-key>
+\t\t<certref></certref>
+\t\t<pkcs11certref></pkcs11certref>
+\t\t<pkcs11pin></pkcs11pin>
+\t\t<caref></caref>
+\t\t<authentication_method>pre_shared_key</authentication_method>
+\t\t<descr><![CDATA[${descr}]]></descr>
+\t\t<nat_traversal>${p1.nat}</nat_traversal>
+\t\t<mobike>${p1.mobike}</mobike>
+\t\t<startaction></startaction>
+\t\t<closeaction></closeaction>
+\t\t<dpd_delay>${p1.dpdDelay}</dpd_delay>
+\t\t<dpd_maxfail>${p1.dpdFail}</dpd_maxfail>
+\t</phase1>`;
+}
+
+function genHubP2(ikeid, seq, net, spoke, p2cfg) {
+  const uniqid = `p${ikeid}n${seq}`;
+  const remote = parseCidr(spoke.lan, spoke.lanBits);
+  const local = parseCidr(net.addr, net.prefix);
+  const site = spoke.name || 'Spoke';
+  const wanLabel = (ikeid % 2 === 1) ? 'WAN1' : 'WAN2';
+  const descr = `${wanLabel}-${site}-${net.label||'Network'}`;
+  return `\t<phase2>
+\t\t<ikeid>${ikeid}</ikeid>
+\t\t<uniqid>${uniqid}</uniqid>
+\t\t<mode>${p2cfg.mode}</mode>
+\t\t<reqid>${seq}</reqid>
+\t\t<localid>
+\t\t\t<type>network</type>
+\t\t\t<address>${escXml(local.addr)}</address>
+\t\t\t<netbits>${local.bits}</netbits>
+\t\t</localid>
+\t\t<remoteid>
+\t\t\t<type>network</type>
+\t\t\t<address>${escXml(remote.addr)}</address>
+\t\t\t<netbits>${remote.bits}</netbits>
+\t\t</remoteid>
+\t\t<protocol>${p2cfg.protocol}</protocol>
+\t\t<encryption-algorithm-option>
+\t\t\t<name>${p2cfg.enc}</name>
+\t\t\t<keylen>${p2cfg.keylen}</keylen>
+\t\t</encryption-algorithm-option>
+\t\t<pfsgroup>${p2cfg.pfsgroup}</pfsgroup>
+\t\t<lifetime>${p2cfg.lifetime}</lifetime>
+\t\t<rekey_time></rekey_time>
+\t\t<rand_time></rand_time>
+\t\t<pinghost></pinghost>
+\t\t<keepalive>${p2cfg.keepalive?'enabled':''}</keepalive>
+\t\t<descr><![CDATA[${descr}]]></descr>
+\t</phase2>`;
+}
+
+function genSpokeP2(ikeid, seq, net, spoke, p2cfg) {
+  const uniqid = `p${ikeid}n${seq}`;
+  const remote = parseCidr(net.addr, net.prefix);
+  const site = spoke.name || 'Spoke';
+  const wanLabel = (ikeid % 2 === 1) ? 'WAN1' : 'WAN2';
+  const descr = `${wanLabel}-${site}-${net.label||'Network'}`;
+  return `\t<phase2>
+\t\t<ikeid>${ikeid}</ikeid>
+\t\t<uniqid>${uniqid}</uniqid>
+\t\t<mode>${p2cfg.mode}</mode>
+\t\t<reqid>${seq}</reqid>
+\t\t<localid>
+\t\t\t<type>lan</type>
+\t\t</localid>
+\t\t<remoteid>
+\t\t\t<type>network</type>
+\t\t\t<address>${escXml(remote.addr)}</address>
+\t\t\t<netbits>${remote.bits}</netbits>
+\t\t</remoteid>
+\t\t<protocol>${p2cfg.protocol}</protocol>
+\t\t<encryption-algorithm-option>
+\t\t\t<name>${p2cfg.enc}</name>
+\t\t\t<keylen>${p2cfg.keylen}</keylen>
+\t\t</encryption-algorithm-option>
+\t\t<pfsgroup>${p2cfg.pfsgroup}</pfsgroup>
+\t\t<lifetime>${p2cfg.lifetime}</lifetime>
+\t\t<rekey_time></rekey_time>
+\t\t<rand_time></rand_time>
+\t\t<pinghost></pinghost>
+\t\t<keepalive>${p2cfg.keepalive?'enabled':''}</keepalive>
+\t\t<descr><![CDATA[${descr}]]></descr>
+\t</phase2>`;
+}
+
+function genHubXml(data) {
+  let ikeid = 1, lines = ['<ipsec>'];
+  const ikeMap = [];
+  const hubIface = data.hub.interfaceName || 'wan';
+  spokes.forEach((s, si) => {
+    const site = s.name || ('Spoke'+(si+1));
+    const id1 = ikeid++, id2 = ikeid++;
+    ikeMap.push({ id1, id2, s });
+    lines.push(genP1(id1, data, data.hub.wan1ip, s.wan1, s.wan1type, s.psk1, 'WAN1', site, hubIface, data.hub.wan1type));
+    lines.push(genP1(id2, data, data.hub.wan2ip, s.wan2, s.wan2type, s.psk2, 'WAN2', site, hubIface, data.hub.wan2type));
+  });
+  ikeMap.forEach(({ id1, id2, s }) => {
+    data.p2entries.forEach((net, ni) => lines.push(genHubP2(id1, ni+1, net, s, data.p2)));
+    data.p2entries.forEach((net, ni) => lines.push(genHubP2(id2, ni+1, net, s, data.p2)));
+  });
+  lines.push('</ipsec>');
+  return lines.join('\n');
+}
+
+function genSpokeXml(data, spoke, idx) {
+  const site = spoke.name || ('Spoke'+(idx+1));
+  let lines = ['<ipsec>'];
+  // peerType here = the HUB's identifier type, since spoke identifies hub as its peer
+  lines.push(genP1(1, data, spoke.wan1, data.hub.wan1ip, data.hub.wan1type, spoke.psk1, 'WAN1', site, spoke.wan1iface||'wan', spoke.wan1type));
+  lines.push(genP1(2, data, spoke.wan2, data.hub.wan2ip, data.hub.wan2type, spoke.psk2, 'WAN2', site, spoke.wan2iface||'wan2', spoke.wan2type));
+  data.p2entries.forEach((net, ni) => lines.push(genSpokeP2(1, ni+1, net, spoke, data.p2)));
+  data.p2entries.forEach((net, ni) => lines.push(genSpokeP2(2, ni+1, net, spoke, data.p2)));
+  lines.push('</ipsec>');
+  return lines.join('\n');
+}
+
+// ── Validation ────────────────────────────────────────────
+function validateAll() {
+  const errors = [], warnings = [];
+  const d = getFormData();
+  if (!d.hub.wan1ip) errors.push('Hub WAN1 IP is missing');
+  if (!d.hub.wan2ip) errors.push('Hub WAN2 IP is missing');
+  if (!d.hub.name) warnings.push('Hub name not set — using "DChub"');
+  if (p2Entries.length === 0) errors.push('No P2 forwarding networks defined');
+  if (spokes.length === 0) errors.push('No spokes configured');
+  spokes.forEach((s, i) => {
+    const label = s.name || `Spoke ${i+1}`;
+    if (!s.wan1) errors.push(`${label}: WAN1 IP/FQDN missing`);
+    if (!s.wan2) errors.push(`${label}: WAN2 IP/FQDN missing`);
+    if (!s.psk1) errors.push(`${label}: WAN1 PSK missing`);
+    if (!s.psk2) errors.push(`${label}: WAN2 PSK missing`);
+    if (!s.lan) errors.push(`${label}: LAN subnet missing`);
+  });
+  return { errors, warnings };
+}
+
+function renderValidation() {
+  if (!settings.validation) { document.getElementById('validation-panel').innerHTML = ''; return; }
+  const { errors, warnings } = validateAll();
+  const panel = document.getElementById('validation-panel');
+  if (errors.length === 0 && warnings.length === 0) {
+    panel.innerHTML = `<div class="info-box" style="margin-bottom:0;">✅ All fields look good — ready to generate.</div>`;
+    return;
+  }
+  let html = '';
+  if (errors.length) html += `<div class="err-box"><strong>⛔ ${errors.length} error${errors.length>1?'s':''} found:</strong><ul style="margin:6px 0 0 16px;">${errors.map(e=>`<li>${e}</li>`).join('')}</ul></div>`;
+  if (warnings.length) html += `<div class="warn-box">⚠ ${warnings.map(w=>`<span>${w}</span>`).join(' · ')}</div>`;
+  panel.innerHTML = html;
+}
+
+// ── Live Preview ──────────────────────────────────────────
+function livePreview() {
+  const data = getFormData();
+  const tabsEl = document.getElementById('preview-tabs');
+  const codeEl = document.getElementById('preview-code');
+  const tagEl = document.getElementById('preview-tag');
+  const tabs = [{ id:'hub', label: data.hub.name ? `Hub (${data.hub.name})` : 'Hub' }];
+  spokes.forEach((s,i) => tabs.push({ id:s.id, label:s.name||`Spoke ${i+1}` }));
+  if (!tabs.find(t => t.id === activePreviewTab)) activePreviewTab = 'hub';
+  tabsEl.innerHTML = tabs.map(t => `<div class="preview-tab ${activePreviewTab===t.id?'active':''}" onclick="setPreviewTab('${t.id}')">${t.label}</div>`).join('');
+  let xml = '';
+  if (activePreviewTab === 'hub') { xml = genHubXml(data); tagEl.textContent='Hub XML'; tagEl.className='tag tag-blue'; }
+  else {
+    const spoke = spokes.find(s => s.id === activePreviewTab);
+    const idx = spokes.findIndex(s => s.id === activePreviewTab);
+    if (spoke) { xml = genSpokeXml(data, spoke, idx); tagEl.textContent=(spoke.name||`Spoke ${idx+1}`)+' XML'; tagEl.className='tag tag-green'; }
+  }
+  codeEl.innerHTML = '<pre>' + syntaxHL(xml) + '</pre>';
+}
+
+function setPreviewTab(id) { activePreviewTab = id; livePreview(); }
+
+function syntaxHL(xml) {
+  return xml
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/&lt;!\[CDATA\[(.*?)\]\]&gt;/g,'<span class="xml-cdata">&lt;![CDATA[$1]]&gt;</span>')
+    .replace(/(&lt;\/?)([\w\-]+)(&gt;|(\s[^&]*)?&gt;)/g,'<span class="xml-tag">$1$2$3</span>');
+}
+
+// ── Generate Page ─────────────────────────────────────────
+function buildGeneratePage() {
+  const data = getFormData();
+  const totalP1 = spokes.length * 2;
+  const totalP2 = p2Entries.length * 2;
+  document.getElementById('generate-summary').innerHTML = `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <span class="tag tag-blue">🖥 1 Hub XML</span>
+      <span class="tag tag-green">📡 ${spokes.length} Spoke XML${spokes.length!==1?'s':''}</span>
+      <span class="tag tag-amber">⚡ ${totalP1} Phase 1 on hub</span>
+      <span class="tag tag-blue">🔗 ${totalP2} Phase 2 per tunnel</span>
+      <span class="tag tag-green">🔐 ${data.p1.enc} / ${data.p1.hash} / DH${data.p1.dhgroup}</span>
+    </div>`;
+  renderValidation();
+  // Tunnel table
+  const tbody = document.getElementById('config-table-body');
+  if (!spokes.length) { tbody.innerHTML='<tr><td colspan="12" style="text-align:center;padding:20px;color:var(--text3);">No spokes configured.</td></tr>'; }
+  else {
+    const p2Pills = p2Entries.map(e=>`<span class="p2-pill">${e.label||e.addr}</span>`).join(' ');
+    let rows='', num=1;
+    spokes.forEach((s,i)=>{
+      const site=s.name||('Spoke '+(i+1)), lan=`${s.lan||'—'}/${s.lanBits||24}`;
+      const enc=`${data.p1.enc}/${data.p1.hash}`, dh=`G${data.p1.dhgroup}`, lt=data.p1.lifetime+'s';
+      rows+=`<tr class="wan1-row"><td class="tbl-num">${num++}</td><td class="tbl-site">${site}</td><td class="tbl-wan1">WAN1</td><td class="tbl-ip">${data.hub.wan1ip||'—'}</td><td class="tbl-ip">${s.wan1||'—'}</td><td><span class="tag tag-blue" style="font-size:10px;">${s.wan1type}</span></td><td class="tbl-psk">${s.psk1||'—'}</td><td class="tbl-lan">${lan}</td><td>${p2Pills}</td><td class="tbl-enc">${enc}</td><td class="tbl-enc">${dh}</td><td class="tbl-enc">${lt}</td></tr>`;
+      rows+=`<tr class="wan2-row"><td class="tbl-num">${num++}</td><td class="tbl-site">${site}</td><td class="tbl-wan2">WAN2</td><td class="tbl-ip">${data.hub.wan2ip||'—'}</td><td class="tbl-ip">${s.wan2||'—'}</td><td><span class="tag tag-green" style="font-size:10px;">${s.wan2type}</span></td><td class="tbl-psk">${s.psk2||'—'}</td><td class="tbl-lan">${lan}</td><td>${p2Pills}</td><td class="tbl-enc">${enc}</td><td class="tbl-enc">${dh}</td><td class="tbl-enc">${lt}</td></tr>`;
+    });
+    tbody.innerHTML = rows;
+  }
+  // P2 table
+  const p2tb = document.getElementById('p2-table-body');
+  if (!p2Entries.length) { p2tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--text3);">No P2 networks.</td></tr>'; }
+  else { const p2=data.p2; p2tb.innerHTML=p2Entries.map((e,i)=>`<tr><td class="tbl-num">${i+1}</td><td style="font-weight:700;color:var(--text);">${e.label||'—'}</td><td class="tbl-lan">${e.addr||'—'}/${e.prefix||'?'}</td><td class="tbl-enc">${e.prefix||'—'}</td><td class="tbl-enc">${p2.protocol.toUpperCase()}</td><td class="tbl-enc">${p2.enc}</td><td class="tbl-enc">${p2.pfsgroup==='0'?'Disabled':'G'+p2.pfsgroup}</td><td class="tbl-enc">${p2.lifetime}s</td><td class="tbl-enc">${p2.mode}</td></tr>`).join(''); }
+  // Output cards
+  const cards = document.getElementById('output-cards');
+  cards.innerHTML = '';
+  const hd = document.createElement('div'); hd.className='output-card';
+  hd.innerHTML=`<div class="output-card-title">🖥 ${data.hub.name||'Hub'}</div><div class="output-card-sub">${spokes.length} spokes · ${totalP1} Phase 1</div><button class="btn btn-success btn-sm" style="width:100%;margin-bottom:5px;" onclick="downloadXml('hub')">⬇ Hub XML</button><button class="btn btn-ghost btn-sm" style="width:100%;" onclick="setPreviewTab('hub');livePreview()">👁 Preview</button>`;
+  cards.appendChild(hd);
+  spokes.forEach((s,i)=>{ const d=document.createElement('div'); d.className='output-card'; d.innerHTML=`<div class="output-card-title">📡 ${s.name||'Spoke '+(i+1)}</div><div class="output-card-sub">${s.lan||'—'}/${s.lanBits||24} · ${p2Entries.length} P2</div><button class="btn btn-success btn-sm" style="width:100%;margin-bottom:5px;" onclick="downloadXml('${s.id}')">⬇ XML</button><button class="btn btn-ghost btn-sm" style="width:100%;" onclick="setPreviewTab('${s.id}');livePreview()">👁 Preview</button>`; cards.appendChild(d); });
+}
+
+// ── Profiles ──────────────────────────────────────────────
+async function saveProfileToApp() {
+  const nameInput = document.getElementById('profile-save-name');
+  const name = nameInput?.value?.trim() || `Profile-${savedProfiles.length+1}`;
+  const data = getFormData();
+  const profile = {
+    id: Date.now(), name,
+    savedAt: new Date().toLocaleString(),
+    p2crypto: { enc:data.p2.enc, keylen:data.p2.keylen, protocol:data.p2.protocol, pfsgroup:data.p2.pfsgroup, lifetime:data.p2.lifetime, mode:data.p2.mode },
+    networks: p2Entries.map(e=>({ label:e.label, addr:e.addr, prefix:e.prefix }))
+  };
+
+  if (hasPyBridge()) {
+    const res = await pyCall('save_p2_profile', profile);
+    if (res && res.ok) {
+      await refreshProfilesFromDisk();
+      document.getElementById('profile-save-status').textContent = `✓ Saved "${name}" to data/profiles/${name}/ — ${profile.networks.length} networks`;
+      setTimeout(()=>{ const el=document.getElementById('profile-save-status'); if(el) el.textContent=''; }, 4000);
+      return;
+    }
+  }
+  // Fallback: browser storage only
+  const existing = savedProfiles.findIndex(p => p.name === name);
+  if (existing >= 0) savedProfiles[existing] = profile;
+  else savedProfiles.push(profile);
+  persistProfiles();
+  refreshProfileQuickload();
+  document.getElementById('profile-save-status').textContent = `✓ Saved "${name}" — ${profile.networks.length} networks`;
+  document.getElementById('profiles-badge').textContent = savedProfiles.length;
+  setTimeout(()=>{ const el=document.getElementById('profile-save-status'); if(el) el.textContent=''; }, 3000);
+}
+
+function loadProfileById(id) {
+  const profile = savedProfiles.find(p => String(p.id) === String(id));
+  if (!profile) return;
+  applyProfileData(profile);
+  const st = document.getElementById('p2-load-status');
+  if (st) { st.textContent = `✓ Loaded "${profile.name}"`; setTimeout(()=>{ st.textContent=''; },3000); }
+}
+
+function applyProfileData(profile) {
+  if (profile.p2crypto) {
+    const pc = profile.p2crypto;
+    setSelect('p2-enc', pc.enc); setSelect('p2-keylen', pc.keylen);
+    setSelect('p2-protocol', pc.protocol); setSelect('p2-pfsgroup', pc.pfsgroup);
+    setSelect('p2-mode', pc.mode);
+    const lt = document.getElementById('p2-lifetime'); if (lt) lt.value = pc.lifetime||'3600';
+  }
+  if (Array.isArray(profile.networks)) {
+    p2Entries = profile.networks.map(n=>({ id:Date.now()+Math.random(), label:n.label||'', addr:n.addr||'', prefix:n.prefix||'' }));
+    renderP2Entries(); livePreview();
+  }
+}
+
+async function deleteProfile(id) {
+  const profile = savedProfiles.find(p => String(p.id) === String(id));
+  if (hasPyBridge() && profile && profile.folderName) {
+    await pyCall('delete_p2_profile', profile.folderName);
+    await refreshProfilesFromDisk();
+  } else {
+    savedProfiles = savedProfiles.filter(p => String(p.id) !== String(id));
+    persistProfiles(); refreshProfileQuickload();
+  }
+  renderProfilesPanel();
+  document.getElementById('profiles-badge').textContent = savedProfiles.length;
+}
+
+async function renameProfile(id) {
+  const profile = savedProfiles.find(p => String(p.id) === String(id));
+  if (!profile) return;
+  const newName = prompt('Rename profile:', profile.name);
+  if (!newName || !newName.trim()) return;
+
+  if (hasPyBridge() && profile.folderName) {
+    const res = await pyCall('rename_p2_profile', profile.folderName, newName.trim());
+    if (res && res.ok) await refreshProfilesFromDisk();
+  } else {
+    profile.name = newName.trim();
+    persistProfiles(); refreshProfileQuickload();
+  }
+  renderProfilesPanel();
+}
+
+function renderProfilesPanel() {
+  const list = document.getElementById('profiles-list');
+  document.getElementById('profiles-badge').textContent = savedProfiles.length;
+  if (!savedProfiles.length) { list.innerHTML='<div class="empty-state"><div class="icon">💾</div><p>No saved profiles yet.<br>Go to P2 Profile → "Save to App".</p></div>'; return; }
+  const diskNote = hasPyBridge() ? `<div class="info-box" style="margin-bottom:10px;">📁 Profiles are saved to disk in <code>data/profiles/&lt;name&gt;/</code> — one organized folder per profile.</div>` : '';
+  list.innerHTML = diskNote + '<div class="profile-list">' + savedProfiles.map(p=>`
+    <div class="profile-item">
+      <div style="flex:1;">
+        <div class="profile-item-name">${p.name}</div>
+        <div class="profile-item-meta">${(p.networks||[]).length} networks · saved ${p.savedAt}</div>
+      </div>
+      <div class="actions-bar">
+        <button class="btn btn-success btn-xs" onclick="loadProfileById('${p.id}');goSection('p2profile')">Load</button>
+        <button class="btn btn-ghost btn-xs" onclick="exportProfileById('${p.id}')">⬇</button>
+        <button class="btn btn-ghost btn-xs" onclick="renameProfile('${p.id}')">✏</button>
+        <button class="btn btn-danger btn-xs" onclick="deleteProfile('${p.id}')">✕</button>
+      </div>
+    </div>`).join('') + '</div>';
+}
+
+function refreshProfileQuickload() {
+  const sel = document.getElementById('profile-quickload');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— Select a saved profile —</option>' + savedProfiles.map(p=>`<option value="${p.id}">${p.name} (${(p.networks||[]).length} nets)</option>`).join('');
+}
+
+function quickLoadProfile(id) {
+  if (!id) return;
+  loadProfileById(id);
+  document.getElementById('profile-quickload').value = '';
+}
+
+function persistProfiles() {
+  try { localStorage.setItem('pf_profiles', JSON.stringify(savedProfiles)); } catch(e){}
+}
+
+async function refreshProfilesFromDisk() {
+  if (hasPyBridge()) {
+    const res = await pyCall('list_p2_profiles');
+    if (res && res.ok) savedProfiles = res.profiles;
+  } else {
+    try { const p = JSON.parse(localStorage.getItem('pf_profiles')||'[]'); if(Array.isArray(p)) savedProfiles=p; } catch(e){}
+  }
+  refreshProfileQuickload();
+  const badge = document.getElementById('profiles-badge');
+  if (badge) badge.textContent = savedProfiles.length;
+}
+
+async function loadPersistedProfiles() {
+  await refreshProfilesFromDisk();
+}
+
+async function clearAllProfiles() {
+  if (!confirm('Clear all saved profiles?')) return;
+  if (hasPyBridge()) {
+    for (const p of savedProfiles) {
+      if (p.folderName) await pyCall('delete_p2_profile', p.folderName);
+    }
+    await refreshProfilesFromDisk();
+  } else {
+    savedProfiles = []; persistProfiles(); refreshProfileQuickload();
+  }
+  renderProfilesPanel();
+  document.getElementById('profiles-badge').textContent = savedProfiles.length;
+}
+
+// ── Export History ──────────────────────────────────────────
+function snapshotCurrentConfig() {
+  const data = getFormData();
+  return {
+    hub: data.hub,
+    p1: data.p1,
+    p2: data.p2,
+    p2entries: p2Entries.map(e => ({ label:e.label, addr:e.addr, prefix:e.prefix })),
+    spokes: spokes.map(s => ({ ...s })),
+  };
+}
+
+async function saveExportToHistory(label, generatedFiles) {
+  const data = getFormData();
+  const hubName = data.hub.name || 'pfsense-hub';
+  const entry = {
+    id: Date.now() + Math.random(),
+    name: label || hubName,
+    savedAt: new Date().toLocaleString(),
+    spokeCount: spokes.length,
+    p2Count: p2Entries.length,
+    config: snapshotCurrentConfig(),
+    files: generatedFiles || [],
+  };
+
+  if (hasPyBridge()) {
+    const res = await pyCall('save_history_entry', entry);
+    if (res && res.ok) {
+      await refreshHistoryFromDisk();
+      return;
+    }
+  }
+  // Fallback: browser storage only
+  exportHistory.unshift(entry);
+  if (exportHistory.length > 50) exportHistory = exportHistory.slice(0, 50);
+  persistHistory();
+  const badge = document.getElementById('history-badge');
+  if (badge) badge.textContent = exportHistory.length;
+}
+
+function persistHistory() {
+  try { localStorage.setItem('pf_history', JSON.stringify(exportHistory)); } catch(e){}
+}
+
+async function refreshHistoryFromDisk() {
+  if (hasPyBridge()) {
+    const res = await pyCall('list_history_entries');
+    if (res && res.ok) {
+      exportHistory = res.entries.map(e => ({
+        id: e.id, name: e.name, savedAt: e.savedAt,
+        spokeCount: e.spokeCount, p2Count: e.p2Count,
+        config: e.config, folderName: e.folderName, folder: e.folder,
+      }));
+    }
+  } else {
+    try { const h = JSON.parse(localStorage.getItem('pf_history')||'[]'); if(Array.isArray(h)) exportHistory=h; } catch(e){}
+  }
+  const badge = document.getElementById('history-badge');
+  if (badge) badge.textContent = exportHistory.length;
+}
+
+async function loadPersistedHistory() {
+  await refreshHistoryFromDisk();
+}
+
+function renderHistoryPanel() {
+  const list = document.getElementById('history-list');
+  document.getElementById('history-badge').textContent = exportHistory.length;
+  if (!exportHistory.length) { list.innerHTML='<div class="empty-state"><div class="icon">🕘</div><p>No exports yet.<br>Every time you export XMLs, a snapshot is saved here automatically.</p></div>'; return; }
+  const diskNote = hasPyBridge() ? `<div class="info-box" style="margin-bottom:10px;">📁 Snapshots are saved to disk in <code>data/history/</code> — click 📂 to open the folder.</div>` : '';
+  list.innerHTML = diskNote + exportHistory.map(h => `
+    <div class="history-item">
+      <div style="flex:1;">
+        <div class="history-item-name">🖥 ${h.name}</div>
+        <div class="history-item-meta">${h.spokeCount} spoke${h.spokeCount!==1?'s':''} · ${h.p2Count} P2 networks · exported ${h.savedAt}</div>
+      </div>
+      <div class="actions-bar">
+        <button class="btn btn-success btn-xs" onclick="loadHistoryEntry('${h.id}')">↺ Load & Edit</button>
+        ${h.folder ? `<button class="btn btn-ghost btn-xs" onclick="openHistoryFolder('${esc(h.folder)}')" title="Open folder">📂</button>` : `<button class="btn btn-ghost btn-xs" onclick="exportHistoryEntry('${h.id}')">⬇ .json</button>`}
+        <button class="btn btn-danger btn-xs" onclick="deleteHistoryEntry('${h.id}','${h.folderName||''}')">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+async function openHistoryFolder(folderPath) {
+  if (hasPyBridge()) await pyCall('open_path', folderPath);
+}
+
+function loadHistoryEntry(id) {
+  const entry = exportHistory.find(h => String(h.id) === String(id));
+  if (!entry) return;
+  const cfg = entry.config;
+
+  // Hub fields
+  document.getElementById('hub-name').value = cfg.hub.name || '';
+  document.getElementById('hub-interface-name').value = cfg.hub.interfaceName || 'wan';
+  document.getElementById('hub-wan1-ip').value = cfg.hub.wan1ip || '';
+  document.getElementById('hub-wan2-ip').value = cfg.hub.wan2ip || '';
+  setSelect('hub-wan1-type', cfg.hub.wan1type || 'address');
+  setSelect('hub-wan2-type', cfg.hub.wan2type || 'address');
+
+  // Phase 1 crypto
+  setSelect('p1-enc', cfg.p1.enc); setSelect('p1-keylen', cfg.p1.keylen);
+  setSelect('p1-hash', cfg.p1.hash); setSelect('p1-prf', cfg.p1.prf);
+  setSelect('p1-dhgroup', cfg.p1.dhgroup);
+  document.getElementById('p1-lifetime').value = cfg.p1.lifetime || '28800';
+  document.getElementById('p1-dpd-delay').value = cfg.p1.dpdDelay || '10';
+  document.getElementById('p1-dpd-fail').value = cfg.p1.dpdFail || '5';
+  document.getElementById('p1-nat').checked = cfg.p1.nat === 'on';
+  document.getElementById('p1-mobike').checked = cfg.p1.mobike === 'on';
+
+  // Phase 2 crypto + networks
+  setSelect('p2-enc', cfg.p2.enc); setSelect('p2-keylen', cfg.p2.keylen);
+  setSelect('p2-protocol', cfg.p2.protocol); setSelect('p2-pfsgroup', cfg.p2.pfsgroup);
+  setSelect('p2-mode', cfg.p2.mode);
+  document.getElementById('p2-lifetime').value = cfg.p2.lifetime || '3600';
+  document.getElementById('p2-keepalive').checked = cfg.p2.keepalive !== false;
+
+  p2Entries = (cfg.p2entries||[]).map(n => ({ id:Date.now()+Math.random(), label:n.label||'', addr:n.addr||'', prefix:n.prefix||'' }));
+  renderP2Entries();
+
+  // Spokes
+  spokes = (cfg.spokes||[]).map((s,i) => ({ ...s, id: 'spoke_'+Date.now()+Math.random()+i, collapsed: false }));
+  spokeCounter = spokes.length;
+  renderSpokes();
+
+  livePreview();
+  goSection('hub');
+}
+
+async function deleteHistoryEntry(id, folderName) {
+  if (hasPyBridge() && folderName) {
+    await pyCall('delete_history_entry', folderName);
+    await refreshHistoryFromDisk();
+  } else {
+    exportHistory = exportHistory.filter(h => String(h.id) !== String(id));
+    persistHistory();
+  }
+  renderHistoryPanel();
+}
+
+function exportHistoryEntry(id) {
+  const entry = exportHistory.find(h => String(h.id) === String(id));
+  if (!entry) return;
+  triggerDownload(JSON.stringify(entry, null, 2), `history-${entry.name.replace(/\s+/g,'-')}-${entry.id}.json`);
+}
+
+async function clearAllHistory() {
+  if (!confirm('Clear all export history? This cannot be undone.')) return;
+  if (hasPyBridge()) {
+    await pyCall('clear_all_history');
+    await refreshHistoryFromDisk();
+  } else {
+    exportHistory = []; persistHistory();
+  }
+  renderHistoryPanel();
+}
+
+function exportProfileById(id) {
+  const profile = savedProfiles.find(p => String(p.id) === String(id));
+  if (!profile) return;
+  triggerDownload(JSON.stringify(profile, null, 2), `p2-profile-${profile.name.replace(/\s+/g,'-')}.json`);
+}
+
+function exportP2Profile() {
+  const data = getFormData();
+  const name = document.getElementById('profile-save-name')?.value?.trim() || `P2-Profile-${Date.now()}`;
+  const profile = { id:Date.now(), name, savedAt:new Date().toLocaleString(), p2crypto:{enc:data.p2.enc,keylen:data.p2.keylen,protocol:data.p2.protocol,pfsgroup:data.p2.pfsgroup,lifetime:data.p2.lifetime,mode:data.p2.mode}, networks:p2Entries.map(e=>({label:e.label,addr:e.addr,prefix:e.prefix})) };
+  triggerDownload(JSON.stringify(profile, null, 2), `p2-profile-${name.replace(/\s+/g,'-')}.json`);
+}
+
+function importP2Profile(input, saveToApp=false) {
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const profile = JSON.parse(e.target.result);
+      applyProfileData(profile);
+      if (saveToApp) {
+        profile.id = profile.id || Date.now();
+        profile.savedAt = profile.savedAt || new Date().toLocaleString();
+        if (!savedProfiles.find(p=>p.id===profile.id)) savedProfiles.push(profile);
+        persistProfiles(); refreshProfileQuickload(); renderProfilesPanel();
+        document.getElementById('profiles-badge').textContent = savedProfiles.length;
+      }
+      const st = document.getElementById('p2-load-status');
+      if (st) { st.textContent = `✓ Loaded "${profile.name||file.name}" — ${(profile.networks||[]).length} networks`; setTimeout(()=>{st.textContent='';},3000); }
+    } catch(err) {
+      const st = document.getElementById('p2-load-status');
+      if (st) { st.style.color='var(--red)'; st.textContent='✗ Invalid profile file'; }
+    }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+function setSelect(id, val) {
+  const el = document.getElementById(id); if (!el||val===undefined) return;
+  for (let o of el.options) { if (o.value===String(val)) { el.value=String(val); break; } }
+}
+
+// ── Downloads ─────────────────────────────────────────────
+function buildAllFiles(data) {
+  const hubName = data.hub.name || 'pfsense-hub';
+  const files = [{ filename: `hub-${hubName}-ipsec.xml`, content: genHubXml(data) }];
+  spokes.forEach((s,i) => {
+    files.push({ filename: `spoke-${s.name||'spoke'+(i+1)}-ipsec.xml`, content: genSpokeXml(data,s,i) });
+  });
+  return files;
+}
+
+function downloadXml(targetId) {
+  const data = getFormData();
+  let xml, filename;
+  if (targetId==='hub') { xml=genHubXml(data); filename=`hub-${data.hub.name||'pfsense'}-ipsec.xml`; }
+  else { const s=spokes.find(x=>x.id===targetId), i=spokes.findIndex(x=>x.id===targetId); xml=genSpokeXml(data,s,i); filename=`spoke-${s.name||'spoke'+(i+1)}-ipsec.xml`; }
+  triggerDownload(xml, filename);
+  saveExportToHistory(data.hub.name, [{ filename, content: xml }]);
+}
+
+async function downloadAll() {
+  const data = getFormData();
+  const files = buildAllFiles(data);
+  files.forEach((f,i) => setTimeout(()=>triggerDownload(f.content, f.filename), i*300));
+  await saveExportToHistory(data.hub.name, files);
+}
+
+async function exportToFolder() {
+  const statusEl = document.getElementById('export-status');
+  const data = getFormData();
+  const hubName = data.hub.name || 'pfsense-hub';
+  const files = buildAllFiles(data);
+
+  // Priority 1: Python disk write (works everywhere PyWebView runs — Linux, Windows, Mac — no picker needed)
+  if (hasPyBridge()) {
+    statusEl.style.color='var(--text3)'; statusEl.textContent='Writing files to disk…';
+    const res = await pyCall('export_to_disk', hubName, files);
+    if (res && res.ok) {
+      statusEl.style.color='var(--green)';
+      statusEl.innerHTML = `✓ Exported ${files.length} files to <code>data/exports/${esc(safeFolderPreview(hubName))}/</code> &nbsp;<button class="btn btn-ghost btn-xs" onclick="pyCall('open_path','${esc(res.folder)}')">📂 Open Folder</button>`;
+      await saveExportToHistory(hubName, files);
+    } else {
+      statusEl.style.color='var(--red)';
+      statusEl.textContent = `✗ Disk write failed: ${res ? res.error : 'unknown error'}`;
+    }
+    return;
+  }
+
+  // Priority 2: Chromium folder picker (browser-only, no PyWebView)
+  if (ENV.exportMode === 'folder') {
+    try {
+      statusEl.style.color='var(--text3)'; statusEl.textContent='Selecting folder…';
+      const dirHandle = pinnedDirHandle || await window.showDirectoryPicker({ mode:'readwrite' });
+      const hubFolder = await dirHandle.getDirectoryHandle(hubName, { create:true });
+      for (const f of files) await writeFile(hubFolder, f.filename, f.content);
+      statusEl.style.color='var(--green)';
+      statusEl.textContent=`✓ Exported ${files.length} files to …/${hubName}/ (${ENV.engine})`;
+      await saveExportToHistory(hubName, files);
+    } catch(err) {
+      if (err.name==='AbortError') statusEl.textContent='';
+      else { statusEl.style.color='var(--red)'; statusEl.textContent=`✗ ${err.message}`; }
+    }
+    return;
+  }
+
+  // Priority 3: ZIP fallback (Firefox / WebKit without PyWebView bridge)
+  statusEl.style.color='var(--text3)';
+  statusEl.textContent=`${ENV.engine} doesn't support folder picking — building ZIP instead…`;
+  await exportAsZip();
+}
+
+function safeFolderPreview(name) {
+  return (name||'pfsense-hub').replace(/[^a-zA-Z0-9\-_. ]/g,'-').replace(/\s+/g,'-');
+}
+
+async function exportAsZip() {
+  const statusEl = document.getElementById('export-status');
+  const data = getFormData();
+  const hubName = data.hub.name || 'pfsense-hub';
+  const files = buildAllFiles(data);
+
+  if (typeof JSZip === 'undefined') {
+    statusEl.style.color='var(--red)';
+    statusEl.textContent='✗ ZIP library failed to load — falling back to individual downloads.';
+    downloadAll();
+    return;
+  }
+
+  try {
+    const zip = new JSZip();
+    const folder = zip.folder(hubName);
+    files.forEach(f => folder.file(f.filename, f.content));
+    const blob = await zip.generateAsync({ type:'blob' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${hubName}-ipsec-configs.zip`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+    statusEl.style.color='var(--green)';
+    statusEl.textContent=`✓ Downloaded ${hubName}-ipsec-configs.zip (${files.length} files, ${ENV.engine} mode) — unzip to get the ${hubName}/ folder`;
+    await saveExportToHistory(hubName, files);
+  } catch(err) {
+    statusEl.style.color='var(--red)';
+    statusEl.textContent=`✗ ZIP export failed: ${err.message}`;
+  }
+}
+
+async function writeFile(dir, name, content) {
+  const fh = await dir.getFileHandle(name, { create:true });
+  const w = await fh.createWritable();
+  await w.write(content); await w.close();
+}
+
+function triggerDownload(content, filename) {
+  const mime = filename.endsWith('.csv')?'text/csv':filename.endsWith('.json')?'application/json':'application/xml';
+  const blob = new Blob([content],{type:mime});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+
+function exportTableCsv() {
+  const data = getFormData();
+  const p2Label = p2Entries.map(e=>`${e.label||''}:${e.addr}/${e.prefix}`).join('|');
+  const headers=['#','Site','WAN','Hub IP','Spoke IP/FQDN','Peer ID Type','PSK','Spoke LAN','P2 Networks','Encryption','DH','Lifetime'];
+  const rows=[headers]; let n=1;
+  spokes.forEach((s,i)=>{
+    const site=s.name||('Spoke '+(i+1)), lan=`${s.lan}/${s.lanBits||24}`, enc=`${data.p1.enc}/${data.p1.hash}`;
+    rows.push([n++,site,'WAN1',data.hub.wan1ip,s.wan1,s.wan1type,s.psk1,lan,p2Label,enc,`G${data.p1.dhgroup}`,data.p1.lifetime+'s']);
+    rows.push([n++,site,'WAN2',data.hub.wan2ip,s.wan2,s.wan2type,s.psk2,lan,p2Label,enc,`G${data.p1.dhgroup}`,data.p1.lifetime+'s']);
+  });
+  triggerDownload(rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n'), `ipsec-review-${data.hub.name||'hub'}.csv`);
+}
+
+// ── Example ───────────────────────────────────────────────
+function loadExample() {
+  document.getElementById('hub-name').value='DChub';
+  document.getElementById('hub-wan1-ip').value='115.147.169.194';
+  document.getElementById('hub-wan2-ip').value='180.232.117.139';
+  document.getElementById('hub-wan1-type').value='address';
+  document.getElementById('hub-wan2-type').value='address';
+  document.getElementById('hub-interface-name').value='wan';
+  p2Entries=[];
+  [['AWS','10.224.0.0','16'],['PROD','172.31.0.0','16'],['GCP','172.25.0.0','23'],['CCTV','172.16.34.0','23'],['CCTV2','172.16.36.0','23'],['CCTV3','172.16.0.0','16'],['OpenVPN','10.252.4.0','24']]
+    .forEach(([l,a,p])=>p2Entries.push({id:Date.now()+Math.random(),label:l,addr:a,prefix:p}));
+  renderP2Entries();
+  spokes=[]; spokeCounter=0;
+  [['SL-CANARY-2702','203.177.16.209','address','wan','103.120.4.169','address','wan2','#3@$aI+F$:?Xx','Z5^xT8&nQ3!mP6','172.20.168.0','24'],
+   ['HO-AtravaD1','hoo-ucfc-27f.dyn.north-starcyber.io','fqdn','wan','tcm-mm-sta-ana.dyn.north-starcyber.io','fqdn','wan2','7bcf05aa769406','47ac5b168d2a9b','10.10.1.0','24']]
+   .forEach(([name,wan1,wan1type,wan1iface,wan2,wan2type,wan2iface,psk1,psk2,lan,lanBits])=>{
+     spokeCounter++;
+     spokes.push({id:'spoke_'+Date.now()+Math.random(),num:spokeCounter,collapsed:false,name,wan1,wan1type,wan1iface,wan2,wan2type,wan2iface,psk1,psk2,lan,lanBits});
+   });
+  renderSpokes(); livePreview();
+}
+
+function clearAll() {
+  spokes=[]; spokeCounter=0; p2Entries=[];
+  ['hub-name','hub-wan1-ip','hub-wan2-ip'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('hub-interface-name').value='wan';
+  renderP2Entries(); renderSpokes(); livePreview();
+}
+
+// ── Init ──────────────────────────────────────────────────
+async function initApp() {
+  await loadPersistedProfiles();
+  await loadPersistedHistory();
+  loadSettings();
+  renderP2Entries();
+  renderSpokes();
+  updateExportModeUI();
+  livePreview();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  let started = false;
+  const start = () => { if(!started){ started=true; initApp(); } };
+
+  if (typeof window.pywebview !== 'undefined' && window.pywebview.api) {
+    start();
+    return;
+  }
+
+  window.addEventListener('pywebviewready', start);
+
+  // Poll for the bridge in case the event fired before this listener attached,
+  // or the platform doesn't emit it reliably. Check every 100ms for up to 5s.
+  let checks = 0;
+  const poll = setInterval(() => {
+    checks++;
+    if (typeof window.pywebview !== 'undefined' && window.pywebview.api) {
+      clearInterval(poll);
+      start();
+    } else if (checks >= 50) { // 5s elapsed
+      clearInterval(poll);
+      start(); // give up waiting, run in browser-only fallback mode
+    }
+  }, 100);
+});
+</script>
+
+</body>
+</html>
